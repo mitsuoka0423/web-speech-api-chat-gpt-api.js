@@ -54,11 +54,11 @@ const clear = (setListenState, setSpeechList) => {
   setListenState("ready");
 };
 
-const summary = async (apiKey, input, props) => {
-  return await postChatCompletion(apiKey, `${input} 要約して`, props);
+const summary = async (apiKey, input) => {
+  return await postChatCompletion(apiKey, `${input} 要約して`);
 };
 
-const postChatCompletion = async (apiKey, input, { model = 'gpt-3.5-turbo' }) => {
+const postChatCompletion = async (apiKey, input, model = 'gpt-3.5-turbo') => {
   return fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
