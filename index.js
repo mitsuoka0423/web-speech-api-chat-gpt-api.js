@@ -14,7 +14,7 @@ const start = (setListenState, setSpeech) => {
   recognition.continuous = true;
   recognition.interimResults = true;
   recognition.onresult = (event) => {
-    console.log(event);
+    console.debug(event);
     const resultList = [];
     for (const result of event.results) {
       resultList.push(result);
@@ -34,7 +34,7 @@ const start = (setListenState, setSpeech) => {
   };
   recognition.onerror = (event) => {
     console.error(event);
-    setListenState("ready");
+    start(setListenState, setSpeech);
   };
 
   recognition.start();
@@ -54,9 +54,46 @@ const clear = (setListenState, setSpeechList) => {
   setListenState("ready");
 };
 
+const promptSummary = (input) => {
+  return `
+  ## 命令
+  以下の文章を要約してください
+  ## ルール
+  - 1文あたり30文字以内
+  - 要点は5つ以内
+  - 箇条書きで出力
+  ## 文章
+  ${input}
+  `;
+}
+
 const summary = async (apiKey, input) => {
-  return await postChatCompletion(apiKey, `${input} 要約して`);
+  return await postChatCompletion(apiKey, promptSummary(input));
 };
+
+const usePersist = (_key, initialValue) => {
+  const key = 'hooks:' + _key
+  const value = () => {
+    try {
+      const item = localStorage.getItem(key)
+      return item ? JSON.parse(item) : initialValue
+    } catch (error) {
+      console.log(error)
+      return initialValue
+    }
+  }
+  const setValue = (value) => {
+    try {
+      setSavedValue(value)
+      localStorage.setItem(key, JSON.stringify(value))
+    } catch (error) {
+      console.log(error)
+    }
+  }
+  const [savedValue, setSavedValue] = useState(value)
+  return [savedValue, setValue]
+}
+
 
 const postChatCompletion = async (apiKey, input, model = 'gpt-3.5-turbo') => {
   return fetch('https://api.openai.com/v1/chat/completions', {
@@ -105,43 +142,44 @@ const TextArea = ({
   value,
   id = "",
   disabled = false,
+  height,
 }) => {
   return (
     <div className="uk-margin">
       <label className="uk-form-label" htmlFor={id}>{label}</label>
       <div className="uk-form-controls">
-        <textarea className="uk-textarea" id={id} value={value} disabled={disabled}></textarea>
+        <textarea className="uk-textarea" id={id} value={value} disabled={disabled} style={{ height }}></textarea>
       </div>
     </div>
   );
 };
 
-
 const Page = () => {
   const [listenState, setListenState] = useState("ready");
   const [speechList, setSpeechList] = useState([]);
   const [aiSummary, setAiSummary] = useState("");
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey, setApiKey] = usePersist('apiKey', "");
 
   return (
     <div>
-      {
-        listenState === "ready" ?
-          <button onClick={() => { start(setListenState, setSpeechList) }} className="uk-button uk-button-default"><span uk-icon="microphone"></span>聞き取り開始</button>
-          :
-          <button onClick={() => { stop(setListenState) }} className="uk-button uk-button-default"><span uk-icon="microphone"></span>聞き取り中...</button>
-      }
-      {
-        listenState === "ready" ?
-          <button onClick={() => { clear(setListenState, setSpeechList) }} className="uk-button uk-button-default"><span uk-icon="trash"></span>クリア</button>
-          :
-          <button className="uk-button uk-button-default" disabled><span uk-icon="trash"></span>クリア</button>
-      }
-
-      <TextArea label="聞き取り結果" value={speechList.join(" ")} disabled></TextArea>
+      <TextArea label="聞き取り結果" value={speechList.join(" ")} height={"300px"} disabled></TextArea>
 
       {
-        apiKey ?
+        listenState === "ready" ?
+          <div>
+            <button onClick={() => { start(setListenState, setSpeechList) }} className="uk-button uk-button-default"><span uk-icon="microphone"></span>聞き取り開始</button>
+            <button onClick={() => { clear(setListenState, setSpeechList) }} className="uk-button uk-button-default"><span uk-icon="trash"></span>クリア</button>
+          </div>
+          :
+          <div>
+            <button onClick={() => { stop(setListenState) }} className="uk-button uk-button-default"><span uk-icon="microphone"></span>聞き取り中...</button>
+            <button className="uk-button uk-button-default" disabled><span uk-icon="trash"></span>クリア</button>
+          </div>
+      }
+
+      <Input label="API Key" type="password" value={apiKey} onChange={(event) => { setApiKey(event.target.value) }}></Input>
+      {
+        apiKey && speechList.length > 0 ?
           <button onClick={() => {
             summary(apiKey, speechList.join(" ")).then((summary) => {
               setAiSummary(summary);
@@ -150,8 +188,7 @@ const Page = () => {
           :
           <button className="uk-button uk-button-default" disabled><span uk-icon="microphone"></span>要約する</button>
       }
-      <Input label="API Key" type="password" value={apiKey} onChange={(event) => { setApiKey(event.target.value) }}></Input>
-      <TextArea label="AI要約" value={aiSummary} disabled></TextArea>
+      <TextArea label="AI要約" value={aiSummary} height={"300px"} disabled></TextArea>
     </div>
   );
 }
