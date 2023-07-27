@@ -3,6 +3,7 @@
 const { createElement, useState } = React;
 
 let recognition = null;
+let speechList = [];
 
 const start = (setListenState, setSpeech) => {
   console.log('[START]start');
@@ -12,21 +13,14 @@ const start = (setListenState, setSpeech) => {
   recognition = new SpeechRecognition();
   recognition.lang = 'ja-JP';
   recognition.continuous = true;
-  recognition.interimResults = true;
   recognition.onresult = (event) => {
     console.debug(event);
-    const resultList = [];
-    for (const result of event.results) {
-      resultList.push(result);
-    }
 
-    const speechList = resultList.filter((result) => {
-      return result.isFinal;
-    }).map((result) => {
-      return result[0].transcript;
-    });
-
-    setSpeech(speechList);
+    const transcript = event.results[event.resultIndex][0].transcript.trim();
+    console.log(transcript);
+    console.log([...speechList, transcript]);
+    setSpeech([...speechList, transcript]);
+    speechList = [...speechList, transcript];
   };
   recognition.onend = () => {
     console.log('onend');
@@ -166,16 +160,12 @@ const Page = () => {
 
       {
         listenState === "ready" ?
-          <div>
-            <button onClick={() => { start(setListenState, setSpeechList) }} className="uk-button uk-button-default"><span uk-icon="microphone"></span>聞き取り開始</button>
-            <button onClick={() => { clear(setListenState, setSpeechList) }} className="uk-button uk-button-default"><span uk-icon="trash"></span>クリア</button>
-          </div>
+          <button onClick={() => { start(setListenState, setSpeechList) }} className="uk-button uk-button-default"><span uk-icon="microphone"></span>聞き取り開始</button>
           :
-          <div>
-            <button onClick={() => { stop(setListenState) }} className="uk-button uk-button-default"><span uk-icon="microphone"></span>聞き取り中...</button>
-            <button className="uk-button uk-button-default" disabled><span uk-icon="trash"></span>クリア</button>
-          </div>
+          <button onClick={() => { stop(setListenState) }} className="uk-button uk-button-default"><span uk-icon="microphone"></span>聞き取り中...</button>
       }
+      <button onClick={() => { clear(setListenState, setSpeechList) }} className="uk-button uk-button-default" disabled={listenState === "listening"}><span uk-icon="trash"></span>クリア</button>
+
 
       <Input label="API Key" type="password" value={apiKey} onChange={(event) => { setApiKey(event.target.value) }}></Input>
       {
