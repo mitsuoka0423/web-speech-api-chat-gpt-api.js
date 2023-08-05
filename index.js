@@ -18,9 +18,12 @@ const start = (setListenState, setSpeech) => {
 
     const transcript = event.results[event.resultIndex][0].transcript.trim();
     console.log(transcript);
-    console.log([...speechList, transcript]);
-    setSpeech([...speechList, transcript]);
-    speechList = [...speechList, transcript];
+
+    if (transcript) {
+      console.log([...speechList, transcript]);
+      setSpeech([...speechList, transcript]);
+      speechList = [...speechList, transcript];
+    }
   };
   recognition.onend = () => {
     console.log('onend');
@@ -156,7 +159,7 @@ const Page = () => {
 
   return (
     <div>
-      <TextArea label="聞き取り結果" value={speechList.join(" ")} height={"300px"} disabled></TextArea>
+      <TextArea label="聞き取り結果" value={speechList.join("\n")} height={"300px"} disabled></TextArea>
 
       {
         listenState === "ready" ?
